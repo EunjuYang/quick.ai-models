@@ -1,0 +1,20 @@
+{
+    "bad_word_ids": [],
+    "batch_size": 1,
+    "embedding_dtype": "Q6_K",
+    "fc_layer_dtype": "Q4_0",
+    "fsu": false,
+    "fsu_lookahead": 2,
+    "init_seq_len": 1024,
+    "lmhead_dtype": "Q6_K",
+    "lora_alpha": 0,
+    "lora_rank": 0,
+    "lora_target": [],
+    "max_seq_len": 2048,
+    "model_file_name": "nntr_qwen3_0.6b_w4e6a32.bin",
+    "model_tensor_type": "Q4_0-FP32",
+    "model_type": "CausalLM",
+    "num_to_generate": 32,
+    "sample_input": "<|im_start|>user\nGive me a short introduction to large language model.<|im_end|>\n<|im_start|>assistant\n",
+    "tokenizer_file": "tokenizer.json"
+}
