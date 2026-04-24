@@ -8,7 +8,7 @@
 #
 # Requirements:
 #   - x86_64 Linux host (Q4_0 is platform-specific)
-#   - Python 3 with torch, transformers, huggingface_hub
+#   - Python 3 with torch, transformers, numpy, safetensors
 #   - Either:
 #       * nntrainer built with -Denable-transformer=true, NNTRAINER env var
 #         pointing at the checkout root (provides nntr_quantize); OR
@@ -66,10 +66,17 @@ if [ ! -f "$CONVERTER" ]; then
 fi
 
 echo "=== Step 1: Download Qwen/Qwen3-0.6B from HuggingFace ==="
-python3 - <<PY
-from huggingface_hub import snapshot_download
-snapshot_download('Qwen/Qwen3-0.6B', local_dir='$WORK/hf')
-PY
+# Fetch every file individually via direct HTTPS with curl. snapshot_download
+# routes model.safetensors through xet-client which has been observed to
+# deadlock; plain curl is reliable and resumable via -C -.
+mkdir -p "$WORK/hf"
+HF_BASE="https://huggingface.co/Qwen/Qwen3-0.6B/resolve/main"
+for f in config.json generation_config.json tokenizer.json tokenizer_config.json \
+         vocab.json merges.txt model.safetensors; do
+  echo "  fetching $f"
+  curl -fL --retry 4 --retry-delay 2 -C - \
+    "$HF_BASE/$f" -o "$WORK/hf/$f"
+done
 
 echo "=== Step 2: Convert HF weights to FP32 nntrainer bin ==="
 python3 "$CONVERTER" \
