@@ -11,7 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OUT_DIR="${1:-$SCRIPT_DIR}"
 
 OUT_FILE="$OUT_DIR/nntr_qwen3_0.6b_w4e4a32.bin"
-EXPECTED_SHA256="e677de3c6be6d6e5a4faa21adbf4adc52d731d1f9f028ef4eea09513e23f21cd"
+EXPECTED_SHA256="361c5788d93fdbb37e42148773beacb5326dd680fb04275f5cb5e31a723e6e05"
 
 echo "Combining parts -> $OUT_FILE"
 cat "$SCRIPT_DIR"/nntr_qwen3_0.6b_w4e4a32.bin.part_* > "$OUT_FILE"
