@@ -69,12 +69,15 @@ echo "=== Step 1: Download Qwen/Qwen3-0.6B from HuggingFace ==="
 # Fetch every file individually via direct HTTPS with curl. snapshot_download
 # routes model.safetensors through xet-client which has been observed to
 # deadlock; plain curl is reliable and resumable via -C -.
+#
+# --retry 8 + --retry-delay 5 + --retry-all-errors covers HF's occasional
+# 5xx bursts (we have observed runs of ~5 consecutive 503s on a single asset).
 mkdir -p "$WORK/hf"
 HF_BASE="https://huggingface.co/Qwen/Qwen3-0.6B/resolve/main"
 for f in config.json generation_config.json tokenizer.json tokenizer_config.json \
          vocab.json merges.txt model.safetensors; do
   echo "  fetching $f"
-  curl -fL --retry 4 --retry-delay 2 -C - \
+  curl -fL --retry 8 --retry-delay 5 --retry-all-errors -C - \
     "$HF_BASE/$f" -o "$WORK/hf/$f"
 done
 
