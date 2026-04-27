@@ -29,6 +29,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 OUT_DIR="$REPO_ROOT/qwen3-0.6b-q40-q6k-x86"
+SIBLING_BUNDLE="$REPO_ROOT/qwen3-0.6b-q40-x86"
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
@@ -65,21 +66,35 @@ if [ ! -f "$CONVERTER" ]; then
   exit 1
 fi
 
-echo "=== Step 1: Download Qwen/Qwen3-0.6B from HuggingFace ==="
-# Fetch every file individually via direct HTTPS with curl. snapshot_download
-# routes model.safetensors through xet-client which has been observed to
-# deadlock; plain curl is reliable and resumable via -C -.
-#
-# --retry 8 + --retry-delay 5 + --retry-all-errors covers HF's occasional
-# 5xx bursts (we have observed runs of ~5 consecutive 503s on a single asset).
+echo "=== Step 1: Stage Qwen/Qwen3-0.6B HF assets ==="
+# tokenizer / config files are already committed alongside the sibling
+# Q4_0 bundle; reuse them rather than re-downloading. This avoids a hard
+# dependency on huggingface.co for the small JSON/text files and only the
+# safetensors weights file actually needs the network.
 mkdir -p "$WORK/hf"
 HF_BASE="https://huggingface.co/Qwen/Qwen3-0.6B/resolve/main"
+
+stage_file() {
+  local f="$1"
+  if [ -f "$SIBLING_BUNDLE/$f" ]; then
+    echo "  reusing $f from $SIBLING_BUNDLE"
+    cp "$SIBLING_BUNDLE/$f" "$WORK/hf/$f"
+  else
+    echo "  fetching $f from $HF_BASE"
+    curl -fL --retry 8 --retry-delay 5 --retry-all-errors -C - \
+      "$HF_BASE/$f" -o "$WORK/hf/$f"
+  fi
+}
+
 for f in config.json generation_config.json tokenizer.json tokenizer_config.json \
-         vocab.json merges.txt model.safetensors; do
-  echo "  fetching $f"
-  curl -fL --retry 8 --retry-delay 5 --retry-all-errors -C - \
-    "$HF_BASE/$f" -o "$WORK/hf/$f"
+         vocab.json merges.txt; do
+  stage_file "$f"
 done
+
+# safetensors are too large to commit -> always pull from HF.
+echo "  fetching model.safetensors from $HF_BASE"
+curl -fL --retry 8 --retry-delay 5 --retry-all-errors -C - \
+  "$HF_BASE/model.safetensors" -o "$WORK/hf/model.safetensors"
 
 echo "=== Step 2: Convert HF weights to FP32 nntrainer bin ==="
 python3 "$CONVERTER" \
